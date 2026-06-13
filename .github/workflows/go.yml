@@ -14,6 +14,9 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
     steps:
     - uses: actions/checkout@v4
 
@@ -23,6 +26,7 @@ jobs:
         go-version: '1.20'
 
     - name: Setup cross compiler
+      if: matrix.arch == 'arm64'
       run: |
         sudo apt update
         sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
@@ -33,18 +37,18 @@ jobs:
     - name: Build
       env:
           GOOS: linux
-          GOARCH: arm64
+          GOARCH: ${{ matrix.arch }}
           CGO_ENABLED: 1
-          CC: aarch64-linux-gnu-gcc
-          CXX: aarch64-linux-gnu-g++
-          GOFLAGS: "-tags=linux,arm64"
-      run: go build -v -ldflags "-linkmode external -extldflags '-static -s -w'" -o EasierConnect_arm64-linux-static
+          CC: ${{ matrix.arch == 'arm64' && 'aarch64-linux-gnu-gcc' || 'gcc' }} 
+          CXX: ${{ matrix.arch == 'arm64' && 'aarch64-linux-gnu-g++' || 'g++' }}
+          GOFLAGS: "-tags=linux,${{ matrix.arch }}"
+      run: go build -v -ldflags "-linkmode external -extldflags '-static -s -w'" -o EasierConnect_${{matrix.arch}}-linux-static
 
     - name: Test
-      run: file EasierConnect_arm64-linux-static
+      run: file EasierConnect_${{matrix.arch}}-linux-static
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: EasierConnect-arm64-linux
-        path: EasierConnect_arm64-linux-static
+        name: EasierConnect-${{matrix.arch}}-linux
+        path: EasierConnect_${{matrix.arch}}-linux-static
